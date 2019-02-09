@@ -1,9 +1,15 @@
 package in.edu.vidya.vidyauniversitypress;
 
 import android.Manifest;
+import android.app.DownloadManager;
 import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Canvas;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -21,47 +27,74 @@ import android.support.v7.widget.Toolbar;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
+
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
+
+import in.edu.vidya.vidyauniversitypress.helper.DownloadService;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+
 import in.edu.vidya.vidyauniversitypress.adapter.BookListAdapter;
+import in.edu.vidya.vidyauniversitypress.app.AppConfig;
 import in.edu.vidya.vidyauniversitypress.helper.CheckForSDCard;
+import in.edu.vidya.vidyauniversitypress.helper.DirectoryHelper;
+import in.edu.vidya.vidyauniversitypress.helper.DownloadService;
+import in.edu.vidya.vidyauniversitypress.helper.HttpHandler;
 import in.edu.vidya.vidyauniversitypress.helper.RecyclerItemTouchHelper;
 import in.edu.vidya.vidyauniversitypress.modal.PDFDoc;
 import pub.devrel.easypermissions.EasyPermissions;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.ref.WeakReference;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements RecyclerItemTouchHelper.RecyclerItemTouchHelperListener {
     private static final int WRITE_REQUEST_CODE = 300;
     private static final String TAG = MainActivity.class.getSimpleName();
-    private BookListAdapter mAdapter;
+    public BookListAdapter mAdapter;
     private CoordinatorLayout coordinatorLayout;
-    private RecyclerView recyclerView;
+    public RecyclerView recyclerView;
+    RelativeLayout emptyView;
+    static ArrayList<PDFDoc> pdfDocs;
+    public static String url;
+    private AdView mAdView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setTitle(R.string.vidya_university_press);
         setSupportActionBar(toolbar);
 
         recyclerView = findViewById(R.id.recycler_view);
+        emptyView = findViewById(R.id.empty_view);
         coordinatorLayout = findViewById(R.id.coordinator_layout);
         mAdapter = new BookListAdapter(this, getPDfs());
+        mAdView = findViewById(R.id.adView_banner);
 
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mAdView.loadAd(adRequest);
+
+        if (pdfDocs.isEmpty()){
+            emptyView.setVisibility(View.VISIBLE);
+            }
         RecyclerView.LayoutManager mLayoutManger = new LinearLayoutManager(MainActivity.this);
         recyclerView.setLayoutManager(mLayoutManger);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.addItemDecoration(new DividerItemDecoration(MainActivity.this, DividerItemDecoration.VERTICAL));
         recyclerView.setAdapter(mAdapter);
+        DirectoryHelper.createDirectory(this);
 
 
         //adding item touch helper
@@ -70,8 +103,6 @@ public class MainActivity extends AppCompatActivity implements RecyclerItemTouch
         //add pass ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT as param
         ItemTouchHelper.SimpleCallback itemTouchHelperCallback = new RecyclerItemTouchHelper(0, ItemTouchHelper.LEFT, this);
         new ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(recyclerView);
-
-
         FloatingActionButton qrButton = findViewById(R.id.qr_button);
         qrButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -80,9 +111,13 @@ public class MainActivity extends AppCompatActivity implements RecyclerItemTouch
                     //check if app has permission to write to the external storage
                     if (EasyPermissions.hasPermissions(MainActivity.this,Manifest.permission.WRITE_EXTERNAL_STORAGE)){
                         if (EasyPermissions.hasPermissions(MainActivity.this,Manifest.permission.CAMERA)){
-                        //Send Intent to ScanActivity
-                        Intent qrFragment= new Intent(MainActivity.this,ScanActivity.class);
-                        startActivityForResult(qrFragment,100);
+                            //Send Intent to ScanActivity
+                            if (isNetworkAvailable()) {
+                                Intent qrFragment = new Intent(MainActivity.this, ScanActivity.class);
+                                startActivityForResult(qrFragment, 100);
+                            }else{
+                                Toast.makeText(MainActivity.this, "Please Check Your Internet Connection", Toast.LENGTH_LONG).show();
+                            }
                         }else
                             EasyPermissions.requestPermissions(MainActivity.this,getString(R.string.write_file),WRITE_REQUEST_CODE,Manifest.permission.CAMERA);
                     }else{
@@ -122,8 +157,8 @@ public class MainActivity extends AppCompatActivity implements RecyclerItemTouch
 
     public static ArrayList<PDFDoc> getPDfs(){
         String name;
-        ArrayList<PDFDoc> pdfDocs = new ArrayList<>();
-        String folder = Environment.getExternalStorageDirectory()+ File.separator + "androiddeft/";
+        pdfDocs = new ArrayList<>();
+        String folder = Environment.getExternalStorageDirectory() + File.separator + "androiddeft/";
         File directory = new File(folder);
         PDFDoc pdfDoc;
         if (directory.exists()){
@@ -153,16 +188,17 @@ public class MainActivity extends AppCompatActivity implements RecyclerItemTouch
      */
     @Override
     public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction, int position) {
-
         if (viewHolder instanceof BookListAdapter.MyViewHolder) {
             // get the removed item name to display it in snack bar
             String name = getPDfs().get(viewHolder.getAdapterPosition()).getName();
-
             // remove the item from recycler view
             mAdapter.removeItem(viewHolder.getAdapterPosition());
             // showing snack bar with Undo option
             Snackbar snackbar = Snackbar.make(coordinatorLayout, name + " removed from your library", Snackbar.LENGTH_LONG);
             snackbar.show();
+            if (getPDfs().isEmpty()){
+                emptyView.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -170,10 +206,25 @@ public class MainActivity extends AppCompatActivity implements RecyclerItemTouch
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 100 && resultCode == 100 && data!=null) {
-            String url = data.getStringExtra("url");
-            new DownloadFile(MainActivity.this).execute(url);
+            url = data.getStringExtra("url");
+            //Log.e("token", tokenNumber);
+            Log.d("url", url);
+            //Log.d("JSON String ----",DownloadService.GetBookName.getString());
+            startService(DownloadService.getDownloadService(this, url, DirectoryHelper.ROOT_DIRECTORY_NAME.concat("/")));
+            registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            //new Done();
         }
     }
+
+    public BroadcastReceiver onComplete = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            BookListAdapter adapter = new BookListAdapter(MainActivity.this, getPDfs());
+            recyclerView.setAdapter(adapter);
+            mAdapter = adapter;
+            emptyView.setVisibility(View.GONE);
+        }
+    };
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -182,99 +233,17 @@ public class MainActivity extends AppCompatActivity implements RecyclerItemTouch
 
 
     /**
-     * Async Task to download file from URL
+     * Checks if there is Internet accessible.
+     * Based on a stackoverflow snippet
+     *
+     * @return True if there is Internet. False if not.
      */
-    private static class DownloadFile extends AsyncTask<String, String, String> {
-
-        private ProgressDialog progressBar;
-        private String fileName;
-        private String folder;
-        private WeakReference<MainActivity> activityWeakReference;
-
-        /**
-         * Before starting background thread
-         * Show Progress Bar Dialog
-         */
-        DownloadFile(MainActivity context){
-            activityWeakReference = new WeakReference<>(context);
+    private boolean isNetworkAvailable() {
+        NetworkInfo activeNetworkInfo = null;
+        ConnectivityManager connectivityManager = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager!=null){
+            activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
         }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            MainActivity activity = activityWeakReference.get();
-            this.progressBar= new ProgressDialog(activity);
-            this.progressBar.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-            this.progressBar.setCancelable(false);
-            this.progressBar.show();
-        }
-
-        /**
-         * Downloading file in background thread
-         */
-        @Override
-        protected String doInBackground(String... f_url) {
-            int count;
-            try {
-                URL url = new URL(f_url[0]);
-                URLConnection connection = url.openConnection();
-                connection.connect();
-                // getting file length
-                int lengthOfFile = connection.getContentLength();
-                // input stream to read file - with 8k buffer
-                InputStream input = new BufferedInputStream(url.openStream(), 8192);
-                //Extract file name from URL
-                fileName = f_url[0].substring(f_url[0].lastIndexOf('/') + 1, f_url[0].length());
-                //External directory path to save file
-                folder = Environment.getExternalStorageDirectory() + File.separator + "androiddeft/";
-                //Create androiddeft folder if it does not exist
-                File directory = new File(folder);
-
-                if (!directory.exists()) {
-                    //noinspection ResultOfMethodCallIgnored
-                    directory.mkdirs();
-                }
-                // Output stream to write file
-                OutputStream output = new FileOutputStream(folder + fileName);
-
-                byte data[] = new byte[1024];
-                long total = 0;
-                while ((count = input.read(data)) != -1) {
-                    total += count;
-                    // publishing the progress....
-                    // After this onProgressUpdate will be called
-                    publishProgress("" + (int) ((total * 100) / lengthOfFile));
-                    Log.d(TAG, "Progress: " + (int) ((total * 100) / lengthOfFile));
-                    // writing data to file
-                    output.write(data, 0, count);
-                }
-                // flushing output
-                output.flush();
-                // closing streams
-                output.close();
-                input.close();
-                //return "Downloaded at: " + folder + fileName;
-                return "Download Successful: Restart Application Now";
-            } catch (Exception e) {
-                Log.e("Error: ", e.getMessage());
-            }
-
-            return "Something went wrong";
-        }
-
-        /**
-         * Updating progress bar
-         */
-        protected void onProgressUpdate(String... progress) {
-            progressBar.setProgress(Integer.parseInt(progress[0]));
-        }
-        @Override
-        protected void onPostExecute(String message) {
-            this.progressBar.dismiss();
-            MainActivity activity = activityWeakReference.get();
-            BookListAdapter adapter = new BookListAdapter(activity, getPDfs());
-            activity.recyclerView.setAdapter(adapter);
-            activity.mAdapter = adapter;
-        }
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 }

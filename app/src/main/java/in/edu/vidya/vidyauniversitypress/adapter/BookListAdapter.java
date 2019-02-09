@@ -1,6 +1,7 @@
 package in.edu.vidya.vidyauniversitypress.adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
@@ -9,14 +10,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
-
 import in.edu.vidya.vidyauniversitypress.MainActivity;
+import in.edu.vidya.vidyauniversitypress.PDFActivity;
 import in.edu.vidya.vidyauniversitypress.R;
 import in.edu.vidya.vidyauniversitypress.modal.PDFDoc;
+
 
 public class BookListAdapter extends RecyclerView.Adapter<BookListAdapter.MyViewHolder> {
 
@@ -53,6 +53,13 @@ public class BookListAdapter extends RecyclerView.Adapter<BookListAdapter.MyView
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
         final PDFDoc item = bookList.get(position);
         holder.nameTextView.setText(item.getName());
+        holder.viewForeground.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openPDFView(item.getPath(), item.getName());
+            }
+        });
+
     }
 
     @Override
@@ -77,5 +84,13 @@ public class BookListAdapter extends RecyclerView.Adapter<BookListAdapter.MyView
 
         }
         notifyItemRemoved(position);
+    }
+    //OPEN PDF VIEW
+    private void openPDFView(String path,String name)
+    {
+        Intent i = new Intent(context, PDFActivity.class);
+        i.putExtra("path",path);
+        i.putExtra("name", name);
+        context.startActivity(i);
     }
 }

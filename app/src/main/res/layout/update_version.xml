@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:layout_width="300dp"
+        android:layout_height="250dp"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="12dp"
+        app:srcCompat="@drawable/vup_logo" />
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:layout_above="@id/update_now_button"
+        android:gravity="center"
+        android:fontFamily="@font/raleway_bold"
+        android:text="@string/update_text"
+        android:textSize="20sp"
+        android:textColor="#000000"
+        android:textStyle="bold"/>
+
+
+    <Button
+        android:id="@+id/update_now_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:background="@drawable/button_gradient"
+        android:textColor="#ffffff"
+        android:layout_alignParentBottom="true"
+        android:text="@string/update_now"/>
+
+    <com.google.android.gms.ads.AdView
+        xmlns:ads="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/adView_banner_update_version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        ads:adSize="MEDIUM_RECTANGLE"
+        android:layout_above="@id/text"
+        ads:adUnitId="@string/banner_ad_unit_id">
+    </com.google.android.gms.ads.AdView>
+
+</RelativeLayout>

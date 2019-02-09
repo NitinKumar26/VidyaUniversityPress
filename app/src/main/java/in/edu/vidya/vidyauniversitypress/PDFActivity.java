@@ -29,8 +29,6 @@ public class PDFActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
 
-        //name=name.substring(0,name.lastIndexOf('.'));
-
         File file = new File(path);
         if (file.canRead()){
             //Load It

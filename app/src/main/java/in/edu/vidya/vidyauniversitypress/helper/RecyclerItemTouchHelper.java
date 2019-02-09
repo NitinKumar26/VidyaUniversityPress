@@ -26,7 +26,6 @@ public class RecyclerItemTouchHelper extends ItemTouchHelper.SimpleCallback {
     public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
         if (viewHolder != null) {
             final View foregroundView = ((BookListAdapter.MyViewHolder) viewHolder).viewForeground;
-
             getDefaultUIUtil().onSelected(foregroundView);
         }
     }
@@ -71,4 +70,5 @@ public class RecyclerItemTouchHelper extends ItemTouchHelper.SimpleCallback {
     public interface RecyclerItemTouchHelperListener {
         void onSwiped(RecyclerView.ViewHolder viewHolder, int direction, int position);
     }
+
 }
