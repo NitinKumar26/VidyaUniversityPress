@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "73645566774",
+    "firebase_url": "https://vup-e-book-reader.firebaseio.com",
+    "project_id": "vup-e-book-reader",
+    "storage_bucket": "vup-e-book-reader.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:73645566774:android:933dd3e5934dba4a6a2197",
+        "android_client_info": {
+          "package_name": "in.edu.vidya.vup"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "73645566774-elhn5q7rbunpvvufv3fig03k189u6oov.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "in.edu.vidya.vup",
+            "certificate_hash": "b01614cf3691fa201cead39e7ad4ea17224b0aab"
+          }
+        },
+        {
+          "client_id": "73645566774-nl31b8uap1uc07eiigbafrg2ed7nbsd3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKoaqQdUeHrJmlK9H7KyCCVyZKuYIeyk8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "73645566774-nl31b8uap1uc07eiigbafrg2ed7nbsd3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
